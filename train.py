@@ -20,6 +20,7 @@ NN_LEARNING_RATE = 0.001
 NN_WEIGHT_DECAY = 1e-5
 RF_N_ESTIMATORS = 500
 NN_LEARNED_FEATURE_EMBEDDING_DIM = 32
+RUN_ANALYSIS = True
 
 torch.manual_seed(SEED)
 np.random.seed(SEED)
@@ -277,9 +278,6 @@ def run_training(output_dir, input_csv=None, input_df=None, vessel_type_filter=N
         'embedding_dim': NN_LEARNED_FEATURE_EMBEDDING_DIM,
         'num_numeric_features_nn_input': X_numeric_scaled_df.shape[1]
     }
-    with open(os.path.join(output_dir, 'training_config.json'), 'w') as f:
-        json.dump(training_config, f, cls=NumpyEncoder)
-    print("Saved imputer, scaler, and training config.")
 
     print("Splitting data into Train/Test sets...")
     X_train_numeric, X_test_numeric, X_train_cat, X_test_cat, y_train, y_test = train_test_split(
@@ -337,6 +335,13 @@ def run_training(output_dir, input_csv=None, input_df=None, vessel_type_filter=N
     finite_mask_rf = np.isfinite(y_test_np) & np.isfinite(y_pred_rf)
     y_test_rf_filt = y_test_np[finite_mask_rf]
     y_pred_rf_filt = y_pred_rf[finite_mask_rf]
+
+    residuals = y_test_np - y_pred_rf
+    res_std = float(np.std(residuals))
+    training_config['residual_std'] = res_std
+    with open(os.path.join(output_dir, 'training_config.json'), 'w') as f:
+        json.dump(training_config, f, cls=NumpyEncoder)
+    print("Saved imputer, scaler, and training config.")
 
     if len(y_test_rf_filt) == 0:
         print("Error: No valid pairs for RF evaluation.")
@@ -475,11 +480,57 @@ def run_training(output_dir, input_csv=None, input_df=None, vessel_type_filter=N
     print("-" * 50)
     return final_results
 
+
+def run_multi_seed_analysis(input_csv, seeds=[42, 1, 10, 100, 2026]):
+    all_rf_results = []
+
+    for s in seeds:
+        torch.manual_seed(s)
+        np.random.seed(s)
+        if torch.cuda.is_available():
+            torch.cuda.manual_seed_all(s)
+
+        print(f"Running training with seed: {s}...")
+
+        temp_dir = f"temp_seed_{s}"
+        results = run_training(
+            output_dir=temp_dir,
+            input_csv=input_csv,
+            input_df=None,
+            vessel_type_filter=None
+        )
+
+        if results and "Random Forest" in results:
+            all_rf_results.append(results["Random Forest"])
+
+    if not all_rf_results:
+        print("No results to analyze.")
+        return
+
+    df = pd.DataFrame(all_rf_results)
+    metrics = ['R²', 'RMSE', 'MAE']
+
+    print("\n" + "=" * 40)
+    print("FINAL STATISTICAL RESULTS (Mean ± SD)")
+    print("=" * 40)
+
+    for m in metrics:
+        if m in df.columns:
+            mean_val = df[m].mean()
+            std_val = df[m].std()
+            print(f"{m:5}: {mean_val:.4f} ± {std_val:.4f}")
+    print("=" * 40)
+
+
 if __name__ == "__main__":
     total_start_time = time.time()
     full_data_csv = 'data/voyages_grouped_country.csv'
     vessel_data_csv = 'data/voyages_grouped_country_vessel.csv'
     vessel_types = ["Chemical", "Bulk", "Container", "Oil", "General", "Liquified-Gas"]
+
+    if RUN_ANALYSIS:
+        run_multi_seed_analysis(full_data_csv)
+        exit(0)
 
     print("--- Starting Full Dataset Training Run ---")
     run_training(input_csv=full_data_csv,
