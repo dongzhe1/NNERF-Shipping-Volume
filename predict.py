@@ -35,14 +35,14 @@ def patch_model_forward(model):
             x = self.dropout(x)
 
         if return_embeddings:
-            rf_features = self.rf_feature_layer(x)
+            rf_features = self.feature_extraction_layer(x)
             return rf_features
 
         linear_pred = self.linear_extrapolation(numeric_features).squeeze(-1)
         nn_pred = self.output_layer(x).squeeze(-1)
 
         nn_pred_clamped = torch.clamp(nn_pred, min=-10.0, max=None)
-        combined_pred = 0.5 * nn_pred_clamped + 0.5 * linear_pred
+        combined_pred = 0.1 * nn_pred_clamped + 0.9 * linear_pred
         final_pred = F.softplus(combined_pred, beta=1.0)
 
         return final_pred
@@ -186,6 +186,13 @@ def predict_batch(batch_input_data, model_type=AllType, verbose=False):
 
         rf_preds_batch = rf_model.predict(embeddings_numpy)
         input_df.loc[valid_rows_mask, 'RF_Prediction'] = rf_preds_batch
+        residual_std = config.get('residual_std', 0)
+        z_score = 1.96
+        input_df.loc[valid_rows_mask, 'Traffic_Lower'] = rf_preds_batch - (
+                    z_score * residual_std)
+        input_df.loc[valid_rows_mask, 'Traffic_Upper'] = rf_preds_batch + (
+                    z_score * residual_std)
+        input_df.loc[input_df['Traffic_Lower'] < 0, 'Traffic_Lower'] = 0
 
         input_df.loc[valid_rows_mask, 'Processed'] = True
         if verbose: print(f" Batch inference took {time.time() - inference_start_time:.3f} seconds.")
@@ -196,7 +203,7 @@ def predict_batch(batch_input_data, model_type=AllType, verbose=False):
         traceback.print_exc()
         input_df.loc[input_df['Error'].isna(), 'Error'] = error_msg
 
-    output_cols = ['o_country', 'd_country', 'origin_gdp', 'dest_gdp', 'origin_pop', 'dest_pop', 'RF_Prediction', 'Error']
+    output_cols = ['o_country', 'd_country', 'origin_gdp', 'dest_gdp', 'origin_pop', 'dest_pop', 'RF_Prediction', 'Traffic_Lower', 'Traffic_Upper', 'NN_Prediction', 'Error']
     for col in output_cols:
         if col not in input_df.columns: input_df[col] = None if col != 'Error' else 'Processing Error'
     results = input_df[output_cols].to_dict('records')
