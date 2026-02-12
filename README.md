@@ -156,26 +156,6 @@ This section addresses the specific statistical items flagged for clarification 
 * Standard deviation across seeds is small (σ_R² = 0.0047), indicating robust reproducibility
 * RMSE and MAE are reported in original units (number of voyages per country-pair-year)
 
-**Prediction uncertainty quantification**:
-
-For individual predictions, the model provides 95% prediction intervals using residual-based estimation:
-
-**Formula**: 
-```
-Prediction Interval = ŷ ± 1.96 × σ_residual
-```
-
-where:
-* **ŷ** = point prediction from Random Forest
-* **σ_residual** = standard deviation of residuals on the test set
-* **1.96** = z-score for 95% confidence level
-
-**Implementation**: The `predict_batch()` function in `predict.py` (lines 387-391) automatically calculates:
-* `Traffic_Lower` = max(0, ŷ - 1.96 × σ_residual)
-* `Traffic_Upper` = ŷ + 1.96 × σ_residual
-
-These bounds are used for visualizing forecast uncertainty (e.g., shaded regions in projections to 2100).
-
 **Additional metrics** (full details in `model/All/results.json`):
 * NRMSE (Normalized RMSE by range and mean)
 * MAPE (Mean Absolute Percentage Error)
