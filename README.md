@@ -191,7 +191,7 @@ These bounds are used for visualizing forecast uncertainty (e.g., shaded regions
 
 #### A. Country-Level Fixed Effects (Entity Embeddings)
 
-Each country (origin and destination) is assigned a learnable embedding vector (dimension = 128 in the neural network). These embeddings function analogously to **country-level random effects** in hierarchical linear models:
+Each country (origin and destination) is assigned a learnable embedding vector (dimension = 32 in the neural network). These embeddings function analogously to **country-level random effects** in hierarchical linear models:
 
 * **Purpose**: Capture latent, country-specific characteristics not fully represented by observable features (GDP, population, centrality)
 * **Examples**: Maritime infrastructure quality, port efficiency, regulatory environment, historical trading patterns
