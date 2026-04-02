@@ -183,7 +183,6 @@ To capture true macro-systemic risk, we calculate an aggregate Prediction Interv
 PI_rate = s × t_{0.05(2), n-1} × √(1 + 1/n)
 PI_rate = 0.0378 × 2.5706 × √(1 + 1/6) ≈ 0.1050 (10.50%)
 ```
-
 **Additional metrics** (full details in `model/All/results.json`):
 * NRMSE (Normalized RMSE by range and mean)
 * MAPE (Mean Absolute Percentage Error)
@@ -199,7 +198,7 @@ PI_rate = 0.0378 × 2.5706 × √(1 + 1/6) ≈ 0.1050 (10.50%)
 
 #### A. Country-Level Fixed Effects (Entity Embeddings)
 
-Each country (origin and destination) is assigned a learnable embedding vector (dimension = 128 in the neural network). These embeddings function analogously to **country-level random effects** in hierarchical linear models:
+Each country (origin and destination) is assigned a learnable embedding vector (dimension = 32 in the neural network). These embeddings function analogously to **country-level random effects** in hierarchical linear models:
 
 * **Purpose**: Capture latent, country-specific characteristics not fully represented by observable features (GDP, population, centrality)
 * **Examples**: Maritime infrastructure quality, port efficiency, regulatory environment, historical trading patterns
