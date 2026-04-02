@@ -158,23 +158,31 @@ This section addresses the specific statistical items flagged for clarification 
 
 **Prediction uncertainty quantification**:
 
-For individual predictions, the model provides 95% prediction intervals using residual-based estimation:
+To accurately reflect both micro-level and macro-level uncertainties without statistical distortion, the model employs a dual-scale prediction interval strategy:
 
-**Formula**: 
+**1. Route-Level Uncertainty (Heteroscedasticity Control):**
+Individual routes exhibit significant heteroscedasticity (a long-tail distribution). To address this, the model uses **tail-heavy percentile binning** on test-set residuals. Instead of a single static global variance, it maps dynamic error margins—ranging from ±6 voyages for minor routes to ±4,000+ for massive global hubs—based on the magnitude of the prediction.
+
+**2. Global Macro-Level Uncertainty (Aggregate Prediction Interval):**
+When aggregating route-level predictions to estimate total global shipping traffic under future Shared Socioeconomic Pathways (SSPs) through 2100, simple addition of micro-intervals is statistically flawed (assuming 100% correlation causes extreme overestimation, while 0% correlation falsely cancels out systemic uncertainty). 
+
+To capture true macro-systemic risk, we calculate an aggregate Prediction Interval (PI) based on the model's historical performance on global totals across the 6 training years, adapting the methodology from Sardain et al.:
+
+* **Yearly Aggregate Relative Errors (Actual vs. Predicted):**
+    * 2002: +2.67%
+    * 2005: +0.32%
+    * 2008: -5.80% (Reflecting early global financial crisis impacts)
+    * 2012: -2.35%
+    * 2015: +4.91%
+    * 2018: -1.17%
+* **Sample Standard Deviation ($s$):** 3.78% (0.0378)
+* **Small-Sample Penalty:** Given only $n=6$ historical anchor years, relying on a standard normal distribution (1.96) would be overly confident. We strictly utilize the Student's t-distribution ($df=5$) to yield a critical t-value of **2.5706**.
+
+**Formula**:
+```text
+PI_rate = s × t_{0.05(2), n-1} × √(1 + 1/n)
+PI_rate = 0.0378 × 2.5706 × √(1 + 1/6) ≈ 0.1050 (10.50%)
 ```
-Prediction Interval = ŷ ± 1.96 × σ_residual
-```
-
-where:
-* **ŷ** = point prediction from Random Forest
-* **σ_residual** = standard deviation of residuals on the test set
-* **1.96** = z-score for 95% confidence level
-
-**Implementation**: The `predict_batch()` function in `predict.py` (lines 387-391) automatically calculates:
-* `Traffic_Lower` = max(0, ŷ - 1.96 × σ_residual)
-* `Traffic_Upper` = ŷ + 1.96 × σ_residual
-
-These bounds are used for visualizing forecast uncertainty (e.g., shaded regions in projections to 2100).
 
 **Additional metrics** (full details in `model/All/results.json`):
 * NRMSE (Normalized RMSE by range and mean)
