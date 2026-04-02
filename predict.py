@@ -129,15 +129,15 @@ def predict_batch(batch_input_data, model_type=AllType, verbose=False):
 
         loaded_static_cols = []
         if static_pair_features_map:
-             first_key = next(iter(static_pair_features_map), None)
-             if first_key:
-                 loaded_static_cols = list(static_pair_features_map[first_key].keys())
+            first_key = next(iter(static_pair_features_map), None)
+            if first_key:
+                loaded_static_cols = list(static_pair_features_map[first_key].keys())
 
         if loaded_static_cols:
-             input_df['Static_OK'] = input_df[loaded_static_cols].notna().all(axis=1)
-             input_df.loc[~input_df['Static_OK'], 'Error'] = 'O-D pair not found in static features map.'
+            input_df['Static_OK'] = input_df[loaded_static_cols].notna().all(axis=1)
+            input_df.loc[~input_df['Static_OK'], 'Error'] = 'O-D pair not found in static features map.'
         else:
-             input_df['Static_OK'] = True
+            input_df['Static_OK'] = True
 
         input_df['o_idx'] = input_df['o_country'].map(country_to_idx)
         input_df['d_idx'] = input_df['d_country'].map(country_to_idx)
@@ -181,19 +181,28 @@ def predict_batch(batch_input_data, model_type=AllType, verbose=False):
         with torch.no_grad():
             embeddings_tensor = nn_model.get_embeddings(X_numeric_tensor, o_idx_batch_tensor, d_idx_batch_tensor)
             embeddings_numpy = embeddings_tensor.cpu().numpy()
-
             nn_preds_tensor = nn_model(X_numeric_tensor, o_idx_batch_tensor, d_idx_batch_tensor)
 
         rf_preds_batch = rf_model.predict(embeddings_numpy)
         input_df.loc[valid_rows_mask, 'RF_Prediction'] = rf_preds_batch
-        residual_std = config.get('residual_std', 0)
-        z_score = 1.96
-        input_df.loc[valid_rows_mask, 'Traffic_Lower'] = rf_preds_batch - (
-                    z_score * residual_std)
-        input_df.loc[valid_rows_mask, 'Traffic_Upper'] = rf_preds_batch + (
-                    z_score * residual_std)
-        input_df.loc[input_df['Traffic_Lower'] < 0, 'Traffic_Lower'] = 0
 
+        residual_bins = config.get('residual_bins')
+        bin_margins = config.get('bin_margins')
+
+        if residual_bins and bin_margins:
+            bin_indices = np.digitize(rf_preds_batch, residual_bins)
+            bin_indices = np.clip(bin_indices, 1, len(residual_bins) - 1)
+
+            margins_batch = np.array([bin_margins[idx - 1] for idx in bin_indices])
+            input_df.loc[valid_rows_mask, 'Traffic_Lower'] = rf_preds_batch - margins_batch
+            input_df.loc[valid_rows_mask, 'Traffic_Upper'] = rf_preds_batch + margins_batch
+        else:
+            residual_std = config.get('residual_std', 0)
+            z_score = 1.96
+            input_df.loc[valid_rows_mask, 'Traffic_Lower'] = rf_preds_batch - (z_score * residual_std)
+            input_df.loc[valid_rows_mask, 'Traffic_Upper'] = rf_preds_batch + (z_score * residual_std)
+
+        input_df.loc[input_df['Traffic_Lower'] < 0, 'Traffic_Lower'] = 0
         input_df.loc[valid_rows_mask, 'Processed'] = True
         if verbose: print(f" Batch inference took {time.time() - inference_start_time:.3f} seconds.")
 
@@ -218,7 +227,7 @@ def get_prediction(o_country, d_country, orgin_gdp, dest_gdp, origin_pop, dest_p
     results = predict_batch(batch_input, model_type=model_type, verbose=verbose)
     if results:
         single_result = results[0]
-        return {'rf_prediction': single_result.get('RF_Prediction'), 'error': single_result.get('Error')}
+        return {'rf_prediction': single_result.get('RF_Prediction'), 'Traffic_Lower': single_result.get('Traffic_Lower'), 'Traffic_Upper': single_result.get('Traffic_Upper')}
     else: return {'error': 'Batch prediction returned empty results.'}
 
 if __name__ == "__main__":

@@ -6,6 +6,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.impute import SimpleImputer
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
+from scipy.stats import t
 import joblib
 import os
 from common import *
@@ -20,7 +21,7 @@ NN_LEARNING_RATE = 0.001
 NN_WEIGHT_DECAY = 1e-5
 RF_N_ESTIMATORS = 500
 NN_LEARNED_FEATURE_EMBEDDING_DIM = 32
-RUN_ANALYSIS = True
+RUN_ANALYSIS = False
 
 torch.manual_seed(SEED)
 np.random.seed(SEED)
@@ -209,7 +210,7 @@ def run_training(output_dir, input_csv=None, input_df=None, vessel_type_filter=N
         print("\nMissing values in numeric features (to be imputed):")
         print(missing_report)
     else:
-         print("\nNo missing values found in numeric features before imputation.")
+        print("\nNo missing values found in numeric features before imputation.")
 
     print("Creating country to index mapping...")
     df['OCountry'] = df['OCountry'].astype(str).fillna('Unknown')
@@ -232,7 +233,7 @@ def run_training(output_dir, input_csv=None, input_df=None, vessel_type_filter=N
         unique_pairs_df = df[cols_for_map].drop_duplicates(subset=['OCountry', 'DCountry'], keep='first').copy()
         for col in static_pair_cols:
             if col in unique_pairs_df.columns:
-                 unique_pairs_df[col] = pd.to_numeric(unique_pairs_df[col], errors='coerce').fillna(0)
+                unique_pairs_df[col] = pd.to_numeric(unique_pairs_df[col], errors='coerce').fillna(0)
         for _, row in unique_pairs_df.iterrows():
             key = (row['OCountry'], row['DCountry'])
             static_features_map[key] = {col: row[col] for col in static_pair_cols if col in row}
@@ -336,9 +337,47 @@ def run_training(output_dir, input_csv=None, input_df=None, vessel_type_filter=N
     y_test_rf_filt = y_test_np[finite_mask_rf]
     y_pred_rf_filt = y_pred_rf[finite_mask_rf]
 
+    # Calculate basic global residual standard deviation
     residuals = y_test_np - y_pred_rf
     res_std = float(np.std(residuals))
     training_config['residual_std'] = res_std
+
+    print("Calculating heteroscedastic prediction intervals (tail-heavy binning)...")
+    # 1. Define custom percentiles focusing on the long tail of the distribution
+    custom_percentiles = [0, 20, 40, 60, 80, 85, 90, 95, 97.5, 99, 100]
+    bins = np.percentile(y_pred_rf_filt, custom_percentiles)
+
+    # 2. Crucial safety step: remove duplicate bins (common if many zeros/small values exist)
+    bins = np.unique(bins)
+
+    # 3. Ensure the maximum prediction is safely bounded within the last bin
+    if len(bins) > 0:
+        bins[-1] += 1e-5
+
+    # 4. Digitize predictions to find their corresponding bin
+    bin_indices = np.digitize(y_pred_rf_filt, bins)
+
+    # 5. Calculate the margin for each bin using the t-distribution formula
+    bin_margins = []
+    for i in range(1, len(bins)):
+        mask = (bin_indices == i)
+        n = np.sum(mask)
+        if n > 1:
+            s = np.std(residuals[mask])
+            t_val = t.ppf(0.975, df=n-1)
+            margin = float(s * t_val * np.sqrt(1.0 + 1.0/n))
+        elif n == 1:
+            margin = float(np.abs(residuals[mask][0]) * 1.96)
+        else:
+
+            margin = float(res_std * 1.96)
+        bin_margins.append(margin)
+
+    # 6. Save bins and margins to config for predict.py to use as a Look-up Table
+    training_config['residual_bins'] = bins.tolist()
+    training_config['bin_margins'] = bin_margins
+    print(f"Saved {len(bin_margins)} residual bins for dynamic uncertainty.")
+
     with open(os.path.join(output_dir, 'training_config.json'), 'w') as f:
         json.dump(training_config, f, cls=NumpyEncoder)
     print("Saved imputer, scaler, and training config.")
@@ -539,7 +578,7 @@ if __name__ == "__main__":
                  vessel_type_filter=None)
     print("\n--- Starting Vessel-Specific Training Runs ---")
     if not os.path.exists(vessel_data_csv):
-         print(f"\nWarning: Vessel-specific data file not found at '{vessel_data_csv}'. Skipping vessel type runs.")
+        print(f"\nWarning: Vessel-specific data file not found at '{vessel_data_csv}'. Skipping vessel type runs.")
     else:
         print(f"Reading vessel data file once: {vessel_data_csv} ...")
         try:
@@ -560,6 +599,6 @@ if __name__ == "__main__":
                     vessel_type_filter=vt
                 )
         except Exception as e:
-             print(f"Error reading or processing {vessel_data_csv}: {e}")
+            print(f"Error reading or processing {vessel_data_csv}: {e}")
     total_end_time = time.time()
     print(f"\nAll training runs finished in {total_end_time - total_start_time:.2f} seconds.")
