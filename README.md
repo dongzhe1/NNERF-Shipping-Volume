@@ -4,23 +4,107 @@ This project implements a hybrid **Neural Network-Enhanced Random Forest (NNERF)
 
 ---
 
+## System Requirements
+
+### Software Dependencies
+
+All Python package dependencies are listed in `requirements.txt`. Key libraries:
+
+| Package | Version |
+|---|---|
+| Python | ≥ 3.11 |
+| torch | 2.6.0 |
+| scikit-learn | 1.6.1 |
+| pandas | 2.2.3 |
+| numpy | 2.2.4 |
+| joblib | 1.4.2 |
+
+> **Note:** Python 3.11 or above is required. Earlier versions may cause dependency version conflicts.
+
+### Tested Operating Systems
+
+- macOS 26.2
+- Ubuntu 22.04
+- Windows 11
+
+### Hardware
+
+No non-standard hardware is required. The model runs on CPU by default. GPU (CUDA) is supported and will be used automatically if available, which speeds up neural network inference.
+
+---
+
 ## Installation
 
-### Prerequisites
-* Python 3.8+
-* GPU with CUDA support (recommended)
+### 1. (Optional) Install GPU-accelerated PyTorch
 
-### Setup
+If you have a CUDA-compatible GPU, install the GPU-optimized version of PyTorch first (adjust `cu124` to match your CUDA version). Otherwise, skip this step and the CPU version will be installed automatically in the next step.
 
 ```bash
-# Install GPU-optimized PyTorch (Adjust 'cu124' to match your CUDA version)
 pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
+```
 
-# Install remaining dependencies
+### 2. Install remaining dependencies
+
+```bash
 pip install -r requirements.txt
 ```
 
+**Typical installation time:** 2–5 minutes on a standard desktop computer, depending on network speed (the majority of time is spent downloading packages).
+
 **Note**: Training results may slightly vary between CPU and GPU due to non-deterministic CUDA kernels. For reproducibility, maintain a consistent hardware environment.
+
+---
+
+## Demo
+
+> **Note on training data:** The full training dataset is not publicly available, as it incorporates data from proprietary, non-open sources. The demo below uses **synthetically generated fake data** (`generate_fake_data.py`) solely to verify that the pipeline runs correctly end-to-end. Because the fake data is purely random, the resulting model has no predictive validity and **cannot be used to evaluate the model's actual performance**.
+
+Run the three scripts below in order. The entire demo takes approximately **2–3 minutes** on a normal desktop computer.
+
+### Step 1 — Generate demo data
+
+```bash
+python generate_fake_data.py
+```
+
+This creates two CSV files under `data/` with randomly generated country-pair records that mirror the schema of the real training data:
+- `data/voyages_grouped_country.csv`
+- `data/voyages_grouped_country_vessel.csv`
+
+Expected output:
+```
+Created 'data/' directory
+Demo data generated successfully!
+ - Countries: 50
+ - Records per year: 1000
+ - Total records in full data: 6000
+ - Total records in vessel data: 6035
+```
+
+### Step 2 — Train the model
+
+```bash
+python train.py
+```
+
+This trains the NNERF model on the generated data and saves all model artifacts (weights, scalers, encoders, etc.) under `model/All/`.
+
+Expected output: training loss logs printed per epoch, followed by a confirmation that model artifacts have been saved to `model/`.
+
+### Step 3 — Run a prediction
+
+```bash
+python predict.py
+```
+
+This loads the saved model and runs a sample prediction for the USA → CAN route.
+
+Expected output (exact numbers will vary due to random fake data):
+```python
+{'rf_prediction': <float>, 'Traffic_Lower': <float>, 'Traffic_Upper': <float>}
+```
+
+**Expected total demo run time:** approximately 2–3 minutes on a normal desktop computer.
 
 ---
 
@@ -262,6 +346,8 @@ To reproduce the multi-seed analysis results:
 
 **Seeds used**: [42, 1, 10, 100, 2026]
 
+**Note**: Reproducing the quantitative results reported in the manuscript requires access to the full, non-public training dataset. A description of the data sources and the full methodology (including pseudocode) is provided in the Methods section of the manuscript.
+
 **Sources of variability**:
 * Random Forest bootstrap sampling
 * Neural network weight initialization
@@ -305,8 +391,15 @@ NNERF-Shipping-Volume/
 │   └── [Vessel_Type]/                   # Vessel-specific models
 ├── train.py                             # Training script
 ├── predict.py                           # Prediction with uncertainty
+├── calculate_macro_pi.py                # Macro-level prediction interval
+├── generate_fake_data.py                # Demo data generator
 ├── common.py                            # Shared utilities
-└── requirements.txt
+├── requirements.txt
+└── LICENSE
 ```
 
 ---
+
+## License
+
+This project is released under the **MIT License**. See `LICENSE` for the full terms.
