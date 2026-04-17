@@ -232,7 +232,7 @@ def get_prediction(o_country, d_country, orgin_gdp, dest_gdp, origin_pop, dest_p
 
 if __name__ == "__main__":
     result = get_prediction(
-        o_country='CIV', d_country='GHA',
+        o_country='USA', d_country='CAN',
         orgin_gdp=45815005169, dest_gdp=45815005169,
         origin_pop=25246342, dest_pop=28696068,
         model_type=AllType
