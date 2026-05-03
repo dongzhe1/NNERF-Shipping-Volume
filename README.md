@@ -128,7 +128,7 @@ contig, comlang_off, comcol, col45, fta_wto, Distance, RouteCount, VesselType
 
 **Key Fields**:
 * **OCountry, DCountry**: Origin/Destination country codes (ISO 3166-1 alpha-3)
-* **OCentrality, DCentrality**: Network betweenness centrality scores
+* **OCentrality, DCentrality**: Network degree centrality scores
 * **OGDP, DGDP**: Gross Domestic Product (current USD)
 * **OPOP, DPOP**: Population (total count)
 * **contig, comlang_off, comcol, col45, fta_wto**: Binary geopolitical/trade indicators
@@ -147,6 +147,12 @@ The training dataset is assembled from raw port-level vessel movement records co
 **Distance.** Inter-country distance is computed using the Haversine formula applied to port-level geographic coordinates. Since multiple port pairs may exist within the same country pair, the reported `Distance` is the **mean geodesic distance across all observed port-pair combinations** for that country pair and year. This provides a representative measure of typical shipping distance rather than a single fixed hub-to-hub value.
 
 **Network centrality.** Each country's structural position in the global maritime network is quantified using **degree centrality** on an unweighted directed graph, where nodes are countries and directed edges represent the existence of at least one observed international route. The graph is constructed from the **union of routes across all six survey years**. Edge weights (voyage counts) are deliberately excluded: because route frequency fluctuates substantially between survey years, an unweighted graph isolates the stable topological structure of the network from transient volume variation, preventing centrality from co-varying with the target variable `RouteCount`. The resulting `OCentrality` and `DCentrality` values reflect the proportion of all other countries in the network that an origin or destination country maintains a direct shipping connection with.
+
+> **Alternative: Betweenness Centrality.** We also tested betweenness centrality as an alternative specification, which measures how often a country lies on the shortest path between other country pairs and more directly captures transshipment hub dynamics. This yields consistent improvements across all metrics (R²: 0.910 → 0.936, RMSE: 262.7 → 221.8, MAE: 62.1 → 48.6). Degree centrality was nonetheless preferred for two reasons: 
+> * **1.** This model is designed for century-scale policy scenario analysis under SSP1–SSP5, where the only available time-varying inputs for future projections are GDP and population and no future network topology data exists. Since centrality must be held fixed at historical values during long-horizon inference, a metric that is stable under incremental network changes is preferable; degree centrality varies smoothly with the addition or removal of individual routes, whereas betweenness can shift substantially when even a small number of bridging edges change. 
+> * **2.** Degree centrality maps more directly onto observable policy levers. It reflects the breadth of a country's bilateral shipping engagement, which can be influenced through trade agreements and port investment. While betweenness is an emergent structural property of the global network as a whole that no single country's policy can directly target.
+> 
+> Researchers focused on near-term forecasting or maximum predictive accuracy, where updated network topology is available, may find betweenness a stronger alternative (`nx.betweenness_centrality(G)`).
 
 **Country-level economic features.** Each country's GDP and population are matched to the corresponding survey year and attached to both the origin (`OGDP`, `OPOP`) and destination (`DGDP`, `DPOP`) sides of each record, serving as the primary economic size indicators in the model.
 
