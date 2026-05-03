@@ -138,6 +138,22 @@ contig, comlang_off, comcol, col45, fta_wto, Distance, RouteCount, VesselType
 
 ---
 
+## Data Preprocessing
+
+The training dataset is assembled from raw port-level vessel movement records covering six survey years (2002, 2005, 2008, 2012, 2015, 2018). Raw records capture individual voyages between ports and are filtered to retain only **international movements** (voyages where the origin and destination ports belong to different countries), then aggregated to the **country-pair level**.
+
+**Port-to-country aggregation.** Each voyage record is mapped to its corresponding origin and destination countries. Records are grouped by country pair and year, with `RouteCount` representing the total number of observed voyages within each group. Domestic movements (same country on both ends) are excluded prior to aggregation.
+
+**Distance.** Inter-country distance is computed using the Haversine formula applied to port-level geographic coordinates. Since multiple port pairs may exist within the same country pair, the reported `Distance` is the **mean geodesic distance across all observed port-pair combinations** for that country pair and year. This provides a representative measure of typical shipping distance rather than a single fixed hub-to-hub value.
+
+**Network centrality.** Each country's structural position in the global maritime network is quantified using **degree centrality** on an unweighted directed graph, where nodes are countries and directed edges represent the existence of at least one observed international route. The graph is constructed from the **union of routes across all six survey years**. Edge weights (voyage counts) are deliberately excluded: because route frequency fluctuates substantially between survey years, an unweighted graph isolates the stable topological structure of the network from transient volume variation, preventing centrality from co-varying with the target variable `RouteCount`. The resulting `OCentrality` and `DCentrality` values reflect the proportion of all other countries in the network that an origin or destination country maintains a direct shipping connection with.
+
+**Country-level economic features.** Each country's GDP and population are matched to the corresponding survey year and attached to both the origin (`OGDP`, `OPOP`) and destination (`DGDP`, `DPOP`) sides of each record, serving as the primary economic size indicators in the model.
+
+**Bilateral features.** Each country pair is further enriched with bilateral indicators that capture structural trade facilitation factors: whether the two countries share a land border (`contig`), a common official language (`comlang_off`), a colonial history (`comcol`, `col45`), and whether a WTO-recognised free trade agreement is in effect (`fta_wto`). These variables are time-invariant within the dataset and are matched at the country-pair level.
+
+---
+
 ## Usage
 
 ### Training
@@ -293,13 +309,13 @@ This approach addresses the **nested structure** where routes are nested within 
 
 #### B. Network-Level Topology (Centrality Metrics)
 
-The model incorporates **betweenness centrality** scores for both origin and destination countries:
+The model incorporates **degree centrality** scores for both origin and destination countries (see Data Preprocessing for construction details):
 
-* **Purpose**: Quantify each country's position in the global maritime network topology
-* **Interpretation**: 
-  - High centrality = "hub" countries (e.g., Singapore, Netherlands) that serve as transshipment centers
-  - Low centrality = "peripheral" countries dependent on hubs for connectivity
-* **Hierarchical role**: Captures the **topological hierarchy** of global trade routes, where certain countries occupy structurally advantageous positions
+* **Purpose**: Quantify the breadth of each country's direct bilateral shipping connections relative to all countries in the global maritime network
+* **Interpretation**:
+  - High centrality = broadly connected countries (e.g., Singapore, Netherlands) maintaining direct routes to many trading partners
+  - Low centrality = countries with few direct international shipping connections, structurally reliant on intermediate hubs
+* **Hierarchical role**: Captures each country's **topological position** in the global trade network, complementing pairwise features such as GDP and distance with a network-wide structural perspective
 
 This differs from simple pairwise features (e.g., GDP, distance) by incorporating the **global network context** into country-pair predictions.
 
