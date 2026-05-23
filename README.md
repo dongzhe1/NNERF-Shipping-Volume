@@ -55,6 +55,12 @@ pip install -r requirements.txt
 
 ---
 
+## Pre-trained Model
+
+> The `model/All/` directory contains a **fully trained model** on the complete dataset. If you only need to run predictions, you can load it directly without any training. See [Step 3 of the Demo](#step-3--run-a-prediction) for the prediction interface.
+
+---
+
 ## Demo
 
 > **Note on training data:** The full training dataset is not publicly available, as it incorporates data from proprietary, non-open sources. The demo below uses **synthetically generated fake data** (`generate_fake_data.py`) solely to verify that the pipeline runs correctly end-to-end. Because the fake data is purely random, the resulting model has no predictive validity and **cannot be used to evaluate the model's actual performance**.
@@ -422,6 +428,32 @@ NNERF-Shipping-Volume/
 
 ---
 
+## Model Design Rationale
+
+### Why a Hybrid Architecture?
+
+Two characteristics of the data motivate the Neural Network-Enhanced Random Forest (NNERF) design.
+
+**Skewed target distribution.** Shipping volumes are heavily concentrated at low values with a long tail toward high volumes. Log-transformation partially alleviates this but leaves residual skew and does not improve model performance sufficiently. Random Forest handles skewed targets directly without requiring transformation, and naturally captures non-linear relationships between features and shipping volume.
+
+![Distribution Comparison: Original vs. Log-transformed Shipping Volume](assets/fig1.label_distribution.jpg)
+
+**Out-of-distribution GDP inputs.** Future GDP projections (OECD SSP1–SSP5 through 2100) extend far beyond the historical training range (2002–2018). Standard tree-based models cannot extrapolate beyond observed training values. The neural network front-end addresses this by learning feature representations that are regularised toward linear extrapolation trends during training — so that when the Random Forest receives these representations alongside the raw projected GDP values, it is operating on features that implicitly encode awareness of long-term economic growth trajectories.
+
+![GDP Distribution Comparison: Historical vs. OECD Projections](assets/fig2.gdp_distribution.jpg)
+
+### Architecture Overview
+
+The model processes inputs in two parallel streams that are combined before the final regression step.
+
+- **Country embeddings.** Origin and destination country identifiers (ISO Alpha-3 codes) are mapped to dense 32-dimensional vectors via a learnable embedding layer. These capture latent country-specific characteristics — port infrastructure, regulatory environment, historical trade patterns — that are not directly measurable.
+- **Numerical preprocessing.** GDP, population, distance, centrality, and engineered ratio/product features are standardised via standard scaling.
+- **Neural network core.** A multi-layer perceptron (Leaky ReLU activations, batch normalisation, dropout, residual connections) combines the embeddings and scaled numerics into abstract feature representations. An auxiliary linear extrapolation branch is trained jointly to encourage representations robust to out-of-distribution inputs.
+- **Random Forest.** The extracted neural features, concatenated with the original scaled numerics, are passed to an ensemble of decision trees for final regression.
+
+![Overview of the Shipping Volume Prediction Model](assets/fig3.overview_of_model.jpg)
+
+---
 ## License
 
 This project is released under the **MIT License**. See `LICENSE` for the full terms.
