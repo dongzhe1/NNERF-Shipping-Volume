@@ -1,7 +1,7 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-from figure_common import SSP_COLORS, HandlerBandWithLine, PI_LABEL_PROPAGATED, make_ssp_line_handles
+from figure_common import SSP_COLORS, HandlerBandWithLine, PI_LABEL_PROPAGATED, make_ssp_line_handles, scenario_to_policy
 import matplotlib.lines as mlines
 from matplotlib.patches import Patch
 import matplotlib.patches as mpatches
@@ -25,12 +25,6 @@ def reproduce_macro_policy_plot():
     print("Aggregating global risk sum...")
     grouped_risk = df_all.groupby(['Year', 'Scenario', 'SSP'])[['prob', 'prob_lower', 'prob_upper']].sum().reset_index()
 
-    scenario_to_policy = {
-        0: 'Policy 1',
-        3: 'Policy 2',
-        4: 'Policy 3',
-        5: 'Policy 4'
-    }
     grouped_risk['Policy'] = grouped_risk['Scenario'].map(scenario_to_policy)
     risk_mapped = grouped_risk.dropna(subset=['Policy']).copy()
 
@@ -48,6 +42,8 @@ def reproduce_macro_policy_plot():
     risk_mapped['risk_change'] = risk_mapped['prob'] / baseline_val
     risk_mapped['lower'] = risk_mapped['prob_lower'] / baseline_val
     risk_mapped['upper'] = risk_mapped['prob_upper'] / baseline_val
+
+    risk_mapped.to_csv('figure2_plot_data.csv', index=False)
 
     print("Generating plot...")
     plt.rcParams['font.family'] = 'sans-serif'
@@ -141,6 +137,7 @@ def reproduce_macro_policy_plot():
         handles=ref_handles,
         loc='center left', bbox_to_anchor=(0.68, 0.25),
         fontsize=11, frameon=False,
+        title="Reference",
         handlelength=1.5, labelspacing=1.5
     )
     second_legend._legend_box.align = "left"

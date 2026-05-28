@@ -146,6 +146,7 @@ if __name__ == "__main__":
     if os.path.exists(input_file):
         plot_data = load_and_prepare_data(input_file)
         if plot_data is not None:
+            plot_data.to_csv('figure1_plot_data.csv', index=False)
             reproduce_ggplot_layout(plot_data)
     else:
         print(f"Please ensure '{input_file}' exists before running.")

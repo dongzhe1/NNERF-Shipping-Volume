@@ -8,6 +8,13 @@ SSP_COLORS = {
     'SSP3': '#00BF7D', 'SSP4': '#00B0F6', 'SSP5': '#E76BF3'
 }
 
+scenario_to_policy = {
+    0: 'Policy 1',
+    3: 'Policy 2',
+    4: 'Policy 3',
+    5: 'Policy 4'
+}
+
 class HandlerBandWithLine(HandlerBase):
     """Legend key: wider shaded band with a centre line."""
     def create_artists(self, legend, orig_handle,

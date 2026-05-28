@@ -1,7 +1,7 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-from figure_common import SSP_COLORS, HandlerBandWithLine, PI_LABEL_PROPAGATED, make_ssp_line_handles
+from figure_common import SSP_COLORS, HandlerBandWithLine, PI_LABEL_PROPAGATED, make_ssp_line_handles, scenario_to_policy
 from matplotlib.patches import Patch
 import matplotlib.patches as mpatches
 
@@ -22,12 +22,6 @@ def reproduce_vessel_absolute_plot():
     else:
         df_vessels = df.copy()
 
-    scenario_to_policy = {
-        0: 'Policy 1',
-        3: 'Policy 2',
-        4: 'Policy 3',
-        5: 'Policy 4'
-    }
     df_vessels['Policy'] = df_vessels['Scenario'].map(scenario_to_policy)
     df_mapped = df_vessels.dropna(subset=['Policy']).copy()
 
@@ -46,6 +40,8 @@ def reproduce_vessel_absolute_plot():
     if plot_data.empty:
         print(f"Error: No data found for {TARGET_POLICY}.")
         return
+
+    plot_data.to_csv('figure3_plot_data.csv', index=False)
 
     plt.rcParams['font.family'] = 'sans-serif'
     plt.rcParams['font.sans-serif'] = ['Arial', 'Helvetica', 'DejaVu Sans']
