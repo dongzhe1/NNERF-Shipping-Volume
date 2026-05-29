@@ -1,14 +1,11 @@
 import pandas as pd
 from matplotlib.patches import Patch
-from figure_common import SSP_COLORS, HandlerBandWithLine, PI_LABEL
+from figure_common import SSP_COLORS, HandlerBandWithLine, PI_LABEL, MACRO_PI_RATE
 import matplotlib.pyplot as plt
 import seaborn as sns
 from matplotlib.gridspec import GridSpec
 import os
-from matplotlib.legend_handler import HandlerBase
-import matplotlib.patches as mpatches
 
-MACRO_PI_RATE = 0.105
 
 def load_and_prepare_data(csv_file_path):
     print(f"Loading data from {csv_file_path}...")

@@ -15,6 +15,8 @@ scenario_to_policy = {
     5: 'Policy 4'
 }
 
+MACRO_PI_RATE = 0.105
+
 class HandlerBandWithLine(HandlerBase):
     """Legend key: wider shaded band with a centre line."""
     def create_artists(self, legend, orig_handle,
