@@ -19,8 +19,9 @@ def load_and_prepare_data(csv_file_path):
     valid_years = [2018] + list(range(2020, 2105, 5))
     df = df[df['Year'].isin(valid_years)].copy()
 
-    vessel_mapping = {'All': 'All vessel types', 'Oil': 'Tanker'}
-    df['VesselType'] = df['VesselType'].replace(vessel_mapping)
+    tanker_types = ["Chemical", "Liquified-Gas", "Oil"]
+    df['VesselType'] = df['VesselType'].apply(lambda x: 'Tanker' if x in tanker_types else x)
+    df['VesselType'] = df['VesselType'].replace({'All': 'All vessel types'})
 
     print("Aggregating country-pair predictions to global totals by VesselType...")
 
