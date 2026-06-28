@@ -16,7 +16,7 @@ def load_and_prepare_data(csv_file_path):
         return None
 
     df['Year'] = pd.to_numeric(df['Year'], errors='coerce')
-    valid_years = list(range(2020, 2105, 5))
+    valid_years = [2018] + list(range(2020, 2105, 5))
     df = df[df['Year'].isin(valid_years)].copy()
 
     vessel_mapping = {'All': 'All vessel types', 'Oil': 'Tanker'}
@@ -55,7 +55,7 @@ def reproduce_ggplot_layout(plot_df, output_pdf='figure1_Projected_global_shippi
     ssp_colors = SSP_COLORS
 
     ssps = sorted(plot_df['SSP'].unique())
-    x_ticks = [2020, 2040, 2060, 2080, 2100]
+    x_ticks = [2018, 2040, 2060, 2080, 2100]
 
     def plot_panel(ax, v_type, title, is_main=False):
         v_data = plot_df[plot_df['VesselType'] == v_type]

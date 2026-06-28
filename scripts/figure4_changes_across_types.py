@@ -96,7 +96,7 @@ def reproduce_vessel_plot_with_bounds():
         ax.set_ylabel('')
         ax.set_xlabel('')
 
-        ax.set_xticks([2020, 2040, 2060, 2080, 2100])
+        ax.set_xticks([2018, 2040, 2060, 2080, 2100])
 
         ax.tick_params(axis='x', bottom=True, direction='out', length=6, width=1.0, labelsize=13, rotation=45)
         ax.set_yticks(y_ticks)
