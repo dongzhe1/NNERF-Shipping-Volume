@@ -116,7 +116,7 @@ def load_and_prepare_risk(risk_path: str, top20_iso: list):
     df_agg["risk_ratio_lower"] = df_agg["prob_lower"] / df_agg["baseline"]
     df_agg["risk_ratio_upper"] = df_agg["prob_upper"] / df_agg["baseline"]
 
-    valid_years = list(range(2020, 2105, 5))
+    valid_years = [2018] + list(range(2020, 2105, 5))
     plot_df = df_agg[
         df_agg["DestinationCountry"].isin(top20_iso) &
         df_agg["Year"].isin(valid_years)

@@ -37,8 +37,8 @@ def load_and_prepare_data(csv_file_path: str):
     all_countries = sorted(df_agg["DCountry"].unique().tolist())
     plot_df = df_agg.copy()
 
-    # Filter to 5-year grid 2020–2100 for plotting only
-    valid_years = list(range(2020, 2105, 5))
+    # Filter to 5-year grid 2018, 2020–2100 for plotting only
+    valid_years = [2018] + list(range(2020, 2105, 5))
     plot_df = plot_df[plot_df["Year"].isin(valid_years)].copy()
 
     # No unit scaling — keep raw voyage counts
